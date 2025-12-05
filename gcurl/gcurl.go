@@ -11,6 +11,7 @@ import (
 	"golang.org/x/term"
 )
 
+// GoCurl is a struct that contains everything we need to run gocurl
 type GoCurl struct {
 	cloudantURL *url.URL
 	curlArgs    []string
@@ -22,6 +23,8 @@ type GoCurl struct {
 	isTTY       bool
 }
 
+// New creates a new GoCurl struct, massaging the parameters, assuming the last parameter is the URL.
+// It runs "which" to locate curl and jq and formulates the arguments for each
 func New() (*GoCurl, error) {
 
 	// read the COUCH_URL environment variable
@@ -100,14 +103,22 @@ func New() (*GoCurl, error) {
 	return &gc, nil
 }
 
+// Run executes a gocurl command, shelling out to curl and optionally jq, passing in the
+// parameters from the GoCurl struct.
 func (gc *GoCurl) Run() error {
 
 	// Process A - curl
 	var curl, jq *exec.Cmd
 	curl = exec.Command(gc.curlPath, gc.curlArgs...)
+	pipeMode := (gc.isTTY && len(gc.jqPath) > 0)
 
-	if gc.isTTY && len(gc.jqPath) > 0 {
+	// if we're not piping to a file & jq is present
+	if pipeMode {
+
+		// execute jq
 		jq = exec.Command(gc.jqPath, ".")
+
+		// connect curl's stdout to jq's stdin
 		pipe, err := curl.StdoutPipe()
 		if err != nil {
 			panic(err)
@@ -119,6 +130,7 @@ func (gc *GoCurl) Run() error {
 			panic(err)
 		}
 	} else {
+		// otherwise it's curl --> stdout
 		curl.Stdout = os.Stdout
 	}
 
@@ -133,7 +145,7 @@ func (gc *GoCurl) Run() error {
 	if err != nil {
 		return err
 	}
-	if gc.isTTY && len(gc.jqPath) > 0 {
+	if pipeMode {
 		err = jq.Wait()
 		if err != nil {
 			return err
@@ -142,6 +154,9 @@ func (gc *GoCurl) Run() error {
 	return nil
 }
 
+// which executes the "which" command-line tool to calculate the path of
+// the passed-in script. This serves as means of detecting whether an
+// executable is present or not.
 func which(script string) (string, error) {
 	// Run which to find the path of the supplied command
 	out, err := exec.Command("which", script).Output()

@@ -6,7 +6,7 @@ import (
 
 func main() {
 
-	// create cloudant snap
+	// create new gocurl struct
 	goCurl, err := gcurl.New()
 	if err != nil {
 		panic(err)
