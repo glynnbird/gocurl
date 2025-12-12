@@ -2,6 +2,7 @@ package gcurl
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"os/exec"
@@ -63,6 +64,8 @@ func New() (*GoCurl, error) {
 	tmpFilename := filepath.Join(os.TempDir(), "gocurl.tmp")
 
 	// additional curl parameters
+	userAgent := "gocurl/dev"
+	userAgentHeader := fmt.Sprintf("user-agent: %v", userAgent)
 	extraParams := []string{
 		"-b",
 		tmpFilename,
@@ -73,7 +76,7 @@ func New() (*GoCurl, error) {
 		"-H",
 		"content-type: application/json",
 		"-H",
-		"user-agent: gocurl/1.0",
+		userAgentHeader,
 		cloudantURL.String(),
 	}
 	args = append(args, extraParams...)
@@ -88,7 +91,7 @@ func New() (*GoCurl, error) {
 	// check whether the output is TTY or a file
 	isTTY := term.IsTerminal(int(os.Stdout.Fd()))
 
-	// create mew struct
+	// create new struct
 	gc := GoCurl{
 		cloudantURL: cloudantURL,
 		curlArgs:    args,
@@ -96,7 +99,7 @@ func New() (*GoCurl, error) {
 		curlPath:    curlPath,
 		jqPath:      jqPath,
 		tmpFilename: tmpFilename,
-		userAgent:   "gocurl/dev",
+		userAgent:   userAgent,
 		isTTY:       isTTY,
 	}
 
@@ -116,18 +119,18 @@ func (gc *GoCurl) Run() error {
 	if pipeMode {
 
 		// execute jq
-		jq = exec.Command(gc.jqPath, ".")
+		jq = exec.Command(gc.jqPath, gc.jqArgs...)
 
 		// connect curl's stdout to jq's stdin
 		pipe, err := curl.StdoutPipe()
 		if err != nil {
-			panic(err)
+			return err
 		}
 		jq.Stdin = pipe
 		jq.Stdout = os.Stdout
 		err = jq.Start()
 		if err != nil {
-			panic(err)
+			return err
 		}
 	} else {
 		// otherwise it's curl --> stdout
