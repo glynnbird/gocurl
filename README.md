@@ -32,7 +32,7 @@ With *gocurl*, this becomes:
 You will need to [download and install the Go compiler](https://go.dev/doc/install). Clone this repo then:
 
 ```sh
-go build
+go build ./cmd/gocurl
 ```
 
 The copy the resultant binary `gocurl` (or `gocurl.exe` in Windows systems) into your path.

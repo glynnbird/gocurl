@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/glynnbird/gocurl/gcurl"
+	gcurl "github.com/glynnbird/gocurl/internal/app"
 )
 
 func main() {
