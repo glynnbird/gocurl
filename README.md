@@ -15,16 +15,16 @@ With *gocurl*, this becomes:
 Or adding a document with curl:
 
 ```sh
-  curl -X POST \ 
-       -H 'Content-type:application/json' \ 
-       -d'{"a":1,"b":2}' \ 
-       'https://mypassword:MyPAssw0rd@myhost.cloudant.com/database' 
+  curl -X POST \
+       -H 'Content-type:application/json' \
+       -d'{"a":1,"b":2}' \
+       'https://mypassword:MyPAssw0rd@myhost.cloudant.com/database'
 ```
 
 With *gocurl*, this becomes:
 
 ```sh
-  gocurl -X POST -d'{"a":1,"b":2}' /database 
+  gocurl -X POST -d'{"a":1,"b":2}' /database
 ```
 
 ## Installation
@@ -38,6 +38,8 @@ go build ./cmd/gocurl
 The copy the resultant binary `gocurl` (or `gocurl.exe` in Windows systems) into your path.
 
 ## Storing your credentials
+
+### Basic Authentication (Legacy)
 
 Your CouchDB credentials are taken from an environment variable "COUCH_URL". This can be set in your console with
 
@@ -60,6 +62,34 @@ where `~/.ibm/cloudant.json` is a JSON file that is readable only by my user con
 export COUCH_URL=`op read op://Private/CloudantBasic/website`
 ```
 
+### IAM Authentication (IBM Cloud)
+
+For IBM Cloud Cloudant instances using IAM authentication, you can use an API key instead of basic authentication. Set two environment variables:
+
+```sh
+export IAM_API_KEY="your-iam-api-key-here"
+export COUCH_URL="https://your-instance.cloudantnosqldb.appdomain.cloud"
+```
+
+**Note:** When using IAM authentication, the `COUCH_URL` should NOT contain username/password credentials.
+
+The IAM API key will be exchanged for a bearer token automatically. The bearer token is cached in `~/.gocurl.json` with restricted permissions (readable only by you) and will be reused for subsequent requests until it expires. This reduces the number of token requests and improves performance.
+
+#### Token Caching
+
+- Tokens are cached in `~/.gocurl.json` in your home directory
+- The cache file is created with `0600` permissions (owner read/write only)
+- Tokens are automatically refreshed when they expire (with a 5-minute buffer)
+- Each API key has its own cached token
+- If you change API keys, a new token will be fetched and cached
+
+#### Security Notes
+
+- Keep your IAM API key secure - treat it like a password
+- The cache file contains valid bearer tokens, so protect it appropriately
+- Tokens typically expire after 1 hour
+- You can delete `~/.gocurl.json` at any time to clear the cache
+
 ## Using gocurl
 
 * All command-line switches are passed through to curl.
@@ -74,12 +104,12 @@ export COUCH_URL=`op read op://Private/CloudantBasic/website`
 ```sh
   > gocurl -X PUT /newdatabase
   {"ok":true}
-```  
+```
 
 ### Add a document
 
 ```sh
-  > gocurl -X POST -d'{"a":1,"b":2}' /newdatabase 
+  > gocurl -X POST -d'{"a":1,"b":2}' /newdatabase
   {"ok":true,"id":"005fa466b4f690ccad7b4d194f071bbe","rev":"1-25f9b97d75a648d1fcd23f0a73d2776e"}
 ```
 
@@ -93,7 +123,7 @@ export COUCH_URL=`op read op://Private/CloudantBasic/website`
 ### Get ten documents
 
 ```sh
-  > gocurl '/newdatabase/_all_docs?limit=10&include_docs=true' 
+  > gocurl '/newdatabase/_all_docs?limit=10&include_docs=true'
   {"total_rows":1,"offset":0,"rows":[{"id":"005fa466b4f690ccad7b4d194f071bbe","key":"005fa466b4f690ccad7b4d194f071bbe","value":{"rev":"1-25f9b97d75a648d1fcd23f0a73d2776e"},"doc":{"_id":"005fa466b4f690ccad7b4d194f071bbe","_rev":"1-25f9b97d75a648d1fcd23f0a73d2776e","a":1,"b":2}}]}
 ```
 
@@ -102,14 +132,14 @@ export COUCH_URL=`op read op://Private/CloudantBasic/website`
 ```sh
   > gocurl -X DELETE /newdatabase
   {"ok":true}
-```  
+```
 
 ### Other curl command-line parameters work too
 
 ```sh
   gocurl -h
   gocurl -v
-  etc. 
+  etc.
 ```
 
 ## Using gocurl with jq
@@ -120,10 +150,8 @@ If [jq](http://stedolan.github.io/jq/) is installed, *gocurl* automatically pipe
  gocurl '/newdatabase/_all_docs?limit=10&include_docs=true' | jq '.total_rows'
 ```
 
-or 
+or
 
 ```sh
  gocurl '/newdatabase/_all_docs?limit=10&include_docs=true' | jq '.rows[0].doc.name | length'
 ```
-
-

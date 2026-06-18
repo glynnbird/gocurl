@@ -22,16 +22,40 @@ type GoCurl struct {
 	tmpFilename string
 	userAgent   string
 	isTTY       bool
+	useIAM      bool
+	bearerToken string
 }
 
 // New creates a new GoCurl struct, massaging the parameters, assuming the last parameter is the URL.
 // It runs "which" to locate curl and jq and formulates the arguments for each
 func New() (*GoCurl, error) {
 
-	// read the COUCH_URL environment variable
-	couchURLStr := os.Getenv("COUCH_URL")
-	if len(couchURLStr) == 0 {
-		return nil, errors.New("COUCH_URL environment variable not found")
+	// Check for IAM authentication
+	iamAPIKey := os.Getenv("IAM_API_KEY")
+	useIAM := len(iamAPIKey) > 0
+	var bearerToken string
+	var couchURLStr string
+
+	if useIAM {
+		// IAM authentication mode
+		// Get bearer token (from cache or fetch new one)
+		token, err := GetIAMToken(iamAPIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get IAM token: %w", err)
+		}
+		bearerToken = token
+
+		// For IAM, COUCH_URL should not contain credentials
+		couchURLStr = os.Getenv("COUCH_URL")
+		if len(couchURLStr) == 0 {
+			return nil, errors.New("COUCH_URL environment variable not found")
+		}
+	} else {
+		// Basic authentication mode (legacy)
+		couchURLStr = os.Getenv("COUCH_URL")
+		if len(couchURLStr) == 0 {
+			return nil, errors.New("COUCH_URL environment variable not found")
+		}
 	}
 
 	// parse the incoming parameters
@@ -77,8 +101,16 @@ func New() (*GoCurl, error) {
 		"content-type: application/json",
 		"-H",
 		userAgentHeader,
-		cloudantURL.String(),
 	}
+
+	// Add IAM bearer token authorization header if using IAM
+	if useIAM {
+		authHeader := fmt.Sprintf("Authorization: Bearer %s", bearerToken)
+		extraParams = append(extraParams, "-H", authHeader)
+	}
+
+	// Add the URL as the last parameter
+	extraParams = append(extraParams, cloudantURL.String())
 	args = append(args, extraParams...)
 
 	// run which to find the path of curl & jq (if available)
@@ -101,6 +133,8 @@ func New() (*GoCurl, error) {
 		tmpFilename: tmpFilename,
 		userAgent:   userAgent,
 		isTTY:       isTTY,
+		useIAM:      useIAM,
+		bearerToken: bearerToken,
 	}
 
 	return &gc, nil
