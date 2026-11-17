@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"golang.org/x/term"
@@ -19,7 +18,6 @@ type GoCurl struct {
 	jqArgs      []string
 	curlPath    string
 	jqPath      string
-	tmpFilename string
 	userAgent   string
 	isTTY       bool
 	useIAM      bool
@@ -84,17 +82,10 @@ func New() (*GoCurl, error) {
 	}
 	cloudantURL := base.ResolveReference(rel)
 
-	// create temp file
-	tmpFilename := filepath.Join(os.TempDir(), "gocurl.tmp")
-
 	// additional curl parameters
 	userAgent := "gocurl/dev"
 	userAgentHeader := fmt.Sprintf("user-agent: %v", userAgent)
 	extraParams := []string{
-		"-b",
-		tmpFilename,
-		"-c",
-		tmpFilename,
 		"-s",
 		"-g",
 		"-H",
@@ -130,7 +121,6 @@ func New() (*GoCurl, error) {
 		jqArgs:      []string{"."},
 		curlPath:    curlPath,
 		jqPath:      jqPath,
-		tmpFilename: tmpFilename,
 		userAgent:   userAgent,
 		isTTY:       isTTY,
 		useIAM:      useIAM,
